@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoSense – carte des alertes</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--vert:#1F4D3A;--ivoire:#F7F5EE;--texte:#1B2622;--gris:#5F6B66}
+body{font-family:"Segoe UI",system-ui,sans-serif;margin:0;background:var(--ivoire);color:var(--texte)}
+header{background:var(--vert);color:#fff;padding:.9rem 1.4rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+header h1{font-family:Georgia,serif;font-size:1.3rem;margin:0}
+header a{color:#fff;font-size:.92rem}
+#carte{height:calc(100vh - 110px);min-height:420px}
+.legende{padding:.6rem 1.4rem;font-size:.9rem;color:var(--gris)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin:0 .3rem 0 1rem;vertical-align:middle}
+.popup b{color:var(--vert)}
+</style>
+</head>
+<body>
+<header>
+  <h1>EcoSense · carte des alertes</h1>
+  <a href="/suivi">Suivre un signalement</a>
+</header>
+<div class="legende">
+  Données de démonstration. Positions approximatives des quartiers.
+  <span class="dot" style="background:#B7791F"></span>Priorité moyenne
+  <span class="dot" style="background:#9B2C2C"></span>Priorité haute
+</div>
+<div id="carte"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const map = L.map("carte").setView([35.7650, -5.8000], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "© OpenStreetMap contributors"
+}).addTo(map);
+
+fetch("/api/carte").then(r => r.json()).then(points => {
+  const limites = [];
+  points.forEach(p => {
+    if (p.lat === null || p.lon === null) return;
+    const couleur = p.priorite === "Haute" ? "#9B2C2C" : "#B7791F";
+    L.circleMarker([p.lat, p.lon], {radius: 11, color: "#fff", weight: 2, fillColor: couleur, fillOpacity: 0.95})
+      .bindPopup(`<div class="popup"><b>${esc(p.titre)}</b><br>${esc(p.reference)} · ${esc(p.statut)}<br>Priorité ${esc(p.priorite)}</div>`)
+      .addTo(map);
+    limites.push([p.lat, p.lon]);
+  });
+  if (limites.length) map.fitBounds(limites, {padding: [40, 40]});
+});
+</script>
+</body>
+</html>

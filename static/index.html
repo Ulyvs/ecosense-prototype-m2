@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoSense – prototype</title>
+<style>
+:root{--vert:#1F4D3A;--vert-clair:#E6F0EA;--ivoire:#F7F5EE;--texte:#1B2622;--gris:#5F6B66;--bord:#DCE3DE;--ambre:#B7791F;--ardoise:#4A5A78}
+*{box-sizing:border-box}
+body{font-family:"Segoe UI",system-ui,Roboto,sans-serif;margin:0;background:var(--ivoire);color:var(--texte);line-height:1.5}
+header{background:var(--vert);color:#fff;padding:1rem 1.5rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+header h1{font-family:Georgia,"Times New Roman",serif;font-size:1.5rem;margin:0;font-weight:700;margin-right:auto;letter-spacing:.2px}
+header label{font-size:.9rem;opacity:.9}
+header select{width:auto;background:#fff;color:var(--texte)}
+header .demo{font-size:.78rem;border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:.15rem .6rem;opacity:.9}
+.hero{background:linear-gradient(135deg,var(--vert-clair),#fff);border-bottom:1px solid var(--bord);padding:2rem 1.5rem}
+.hero div{max-width:1200px;margin:0 auto}
+.hero h2{font-family:Georgia,serif;font-size:1.9rem;color:var(--vert);margin:0 0 .3rem}
+.hero p{margin:0;color:var(--gris);max-width:70ch}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:1.2rem;padding:1.5rem;max-width:1200px;margin:0 auto}
+section{background:#fff;border:1px solid var(--bord);border-radius:16px;padding:1.2rem 1.3rem;box-shadow:0 1px 2px rgba(31,77,58,.06)}
+h2{font-family:Georgia,serif;font-size:1.2rem;margin:0 0 .8rem;color:var(--vert)}
+button{border:1px solid var(--vert);background:var(--vert);color:#fff;border-radius:999px;padding:.5rem 1.1rem;cursor:pointer;font:inherit;font-weight:600}
+button:hover{filter:brightness(1.08)}
+button.sec{background:#fff;color:var(--vert)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #7FB89A;outline-offset:2px}
+input,select,textarea{width:100%;padding:.55rem .7rem;border:1px solid var(--bord);border-radius:10px;font:inherit;background:#fff;color:var(--texte)}
+label{font-size:.92rem;color:var(--gris)}
+.item{border:1px solid var(--bord);border-left:5px solid var(--ambre);border-radius:12px;padding:.8rem .9rem;margin-bottom:.6rem;cursor:pointer;background:#fff;transition:background .15s}
+.item:hover{background:var(--ivoire)}
+.item strong{color:var(--texte)}
+.muted{color:var(--gris);font-size:.9rem}
+.err{color:#9B2C2C;font-size:.87rem;min-height:1.2em;margin-top:.3rem}
+.ok{background:var(--vert-clair);border:1px solid #BFD9C9;border-radius:12px;padding:.8rem;margin-top:.8rem}
+.tag{font-size:.78rem;background:var(--vert-clair);color:var(--vert);padding:.15rem .6rem;border-radius:999px;margin-right:.35rem;display:inline-block;margin-top:.3rem}
+.tag.statut{background:#EEF0F5;color:var(--ardoise)}
+ul.journal{padding-left:1.1rem;font-size:.9rem}
+.badge-haute{color:#9B2C2C}
+@media (max-width:800px){main{grid-template-columns:1fr}header h1{margin-right:0}}
+.pleine{max-width:1200px;margin:0 auto;padding:0 1.5rem 1.5rem}
+#carte{height:440px;border-radius:12px;border:1px solid var(--bord)}
+.legende{font-size:.9rem;color:var(--gris);margin:.2rem 0 .6rem}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin:0 .3rem 0 1rem;vertical-align:middle}
+</style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+<header>
+  <h1>EcoSense</h1>
+  <span class="demo">Prototype · données de démonstration</span>
+  <button class="sec" id="reset">Réinitialiser la démonstration</button>
+</header>
+<div class="hero"><div><h2>Smarter Cities. Cleaner Future.</h2><p>Signalez une nuisance, suivez les alertes qualifiées par les agents, et consultez les décisions prises par les acteurs habilités.</p></div></div>
+<main>
+  <div>
+    <section id="connexion">
+      <h2>Connexion</h2>
+      <p class="muted" id="connexion-etat"></p>
+      <form id="form-connexion" novalidate>
+        <label for="compte">Compte de démonstration</label>
+        <select id="compte"><option value="citoyen">Citoyen</option><option value="agent">Agent municipal</option><option value="decideur">Décideur</option></select>
+        <label for="mdp" style="margin-top:.5rem;display:block">Mot de passe</label>
+        <input id="mdp" type="password" autocomplete="current-password">
+        <button type="submit" style="margin-top:.5rem">Se connecter</button>
+        <div class="err" id="err-conn"></div>
+        <p class="muted" style="font-size:.8rem">Mots de passe de démonstration : citoyen-demo, agent-demo, decideur-demo.</p>
+      </form>
+    </section>
+    <section>
+      <h2>Signaler une nuisance</h2>
+      <form id="formSig" novalidate>
+        <label for="s-type">Type</label>
+        <select id="s-type"><option value="visuel">Dépôt de déchets</option><option value="bruit">Bruit</option><option value="air">Qualité de l'air</option></select>
+        <label for="s-q" style="margin-top:.5rem;display:block">Quartier</label>
+        <select id="s-q"><option value="Q-CV">Centre-ville</option><option value="Q-MB">Malabata</option><option value="Q-BM">Béni Makada</option></select>
+        <label for="s-lieu" style="margin-top:.5rem;display:block">Lieu</label>
+        <input id="s-lieu" maxlength="120">
+        <label for="s-desc" style="margin-top:.5rem;display:block">Description (20 caractères minimum)</label>
+        <textarea id="s-desc" rows="3" maxlength="500"></textarea>
+        <div class="err" id="err-sig"></div>
+        <button type="submit" style="margin-top:.4rem">Envoyer</button>
+      </form>
+      <div id="confirmSig"></div>
+    </section>
+    <section style="margin-top:1rem">
+      <h2>Signalements reçus</h2>
+      <div id="listeSig"></div>
+    </section>
+    <section style="margin-top:1rem">
+      <h2>Suivre mon signalement</h2>
+      <p class="muted">Entrez la référence reçue après votre envoi.</p>
+      <form id="sf" novalidate>
+        <input id="sref" placeholder="SIG-2026-0041" maxlength="20" aria-label="Référence du signalement">
+        <button type="submit" style="margin-top:.5rem">Consulter</button>
+        <div class="err" id="serr"></div>
+      </form>
+      <div id="sres"></div>
+    </section>
+  </div>
+  <div>
+    <section>
+      <h2>Alertes</h2>
+      <div id="listeAlertes"></div>
+    </section>
+    <section style="margin-top:1rem" id="fiche" aria-live="polite">
+      <h2>Fiche</h2>
+      <p class="muted">Sélectionnez une alerte.</p>
+    </section>
+  </div>
+</main>
+<div class="pleine">
+  <section>
+    <h2>Carte des alertes</h2>
+    <div class="legende">Données de démonstration, positions approximatives des quartiers.
+      <span class="dot" style="background:#B7791F"></span>Priorité moyenne
+      <span class="dot" style="background:#9B2C2C"></span>Priorité haute</div>
+    <div id="carte"></div>
+  </section>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+let session = JSON.parse(sessionStorage.getItem("ecosense-session") || "null");
+const role = () => (session && session.role) || "citoyen";
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path, opts = {}) {
+  const r = await fetch(path, {...opts, headers: {"Content-Type": "application/json", ...(session ? {"Authorization": "Bearer " + session.jeton} : {}), ...(opts.headers||{})}});
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || "Erreur " + r.status);
+  return body;
+}
+let alerteCourante = null;
+
+async function chargerAlertes() {
+  const liste = await api("/api/alertes");
+  $("#listeAlertes").innerHTML = liste.length ? liste.map(a => `
+    <div class="item" data-id="${a.id}" tabindex="0" role="button">
+      <strong>${esc(a.titre)}</strong><br>
+      <span class="tag">${esc(a.quartier_nom)}</span><span class="tag">Priorité ${esc(a.priorite)}</span>
+      <span class="muted">${esc(a.statut)} · ${esc(a.reference)}</span>
+    </div>`).join("") : `<p class="muted">Aucune alerte.</p>`;
+  document.querySelectorAll("#listeAlertes .item").forEach(el => {
+    const go = () => ouvrir(el.dataset.id);
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+  });
+}
+async function chargerSignalements() {
+  const liste = await api("/api/signalements");
+  $("#listeSig").innerHTML = liste.length ? liste.map(s => `
+    <div class="item" style="border-left-color:#4A5A78">
+      <strong>${esc(s.reference)}</strong> · <span class="muted">${esc(s.lieu)}</span><br>
+      <span class="tag">${esc(s.statut)}</span>
+      ${role()==="agent" && s.statut==="Reçu" ? `<button class="sec" data-q="${esc(s.reference)}">Qualifier en alerte</button>` : ""}
+    </div>`).join("") : `<p class="muted">Aucun signalement.</p>`;
+  document.querySelectorAll("[data-q]").forEach(b => b.onclick = async () => {
+    try { await api(`/api/signalements/${b.dataset.q}/qualifier`, {method:"POST"}); await tout(); }
+    catch (e) { alert(e.message); }
+  });
+}
+function traceCourbe(releves, seuil) {
+  if (releves.length < 2) return "";
+  const pts = [...releves].sort((a, b) => a.horodatage.localeCompare(b.horodatage));
+  const W = 420, H = 150, M = 30;
+  const max = Math.max(seuil * 1.2, ...pts.map(p => p.valeur));
+  const x = i => M + i * (W - 2 * M) / (pts.length - 1);
+  const y = v => H - M - (v / max) * (H - 2 * M);
+  const ligne = pts.map((p, i) => `${x(i).toFixed(1)},${y(p.valeur).toFixed(1)}`).join(" ");
+  const yS = y(seuil).toFixed(1);
+  return `<div style="margin:.8rem 0">
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Évolution des relevés">
+      <line x1="${M}" y1="${yS}" x2="${W - M}" y2="${yS}" stroke="#B7791F" stroke-dasharray="4 3"/>
+      <text x="${W - M}" y="${yS - 5}" text-anchor="end" font-size="11" fill="#B7791F">seuil ${seuil}</text>
+      <polyline points="${ligne}" fill="none" stroke="#1F4D3A" stroke-width="2.5"/>
+      ${pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.valeur).toFixed(1)}" r="4" fill="#1F4D3A"><title>${esc(p.valeur)} ${esc(p.unite)}</title></circle>`).join("")}
+    </svg>
+    <div class="muted" style="font-size:.8rem">Relevés dans l'ordre chronologique. Survolez un point pour voir la valeur.</div>
+  </div>`;
+}
+
+async function ouvrir(id) {
+  const a = await api(`/api/alertes/${id}`);
+  alerteCourante = a;
+  const releves = (a.releves||[]).map(r => `${r.valeur} ${esc(r.unite)} (${new Date(r.horodatage).toLocaleString("fr-FR")})`).join("<br>");
+  const boutons = a.actions_permises.length
+    ? `<label for="motif" style="margin-top:.6rem;display:block">Motif (10 caractères minimum)</label>
+       <textarea id="motif" rows="2"></textarea><div class="err" id="err-motif"></div>
+       <button id="decider" style="margin-top:.4rem">${esc(a.actions_permises[0] === a.statut ? "Passer à l'étape suivante" : "")}</button>`
+    : `<p class="muted">Aucune action disponible pour le rôle « ${esc(role())} » au statut « ${esc(a.statut)} ».</p>`;
+  $("#fiche").innerHTML = `
+    <h2>${esc(a.titre)}</h2>
+    <p><span class="tag">${esc(a.reference)}</span><span class="tag">Statut : ${esc(a.statut)}</span><span class="tag">Priorité ${esc(a.priorite)}</span></p>
+    <p><strong>Action proposée :</strong> ${esc(a.action_proposee)}</p>
+    <p class="muted"><strong>Hypothèse (indicative) :</strong> ${esc(a.hypothese)}</p>
+    <p><strong>Relevés :</strong><br>${releves || "<span class='muted'>Aucun relevé rattaché.</span>"}</p>
+    ${traceCourbe(a.releves||[], a.type==="bruit"?70:50)}
+    ${boutons}
+    <h3 style="font-size:.95rem;margin-top:1rem">Journal</h3>
+    ${a.journal.length ? `<ul class="journal">${a.journal.map(j => `<li>${esc(j.horodatage.slice(0,16).replace("T"," "))} — ${esc(j.action)} — ${esc(j.role)} — « ${esc(j.motif)} »</li>`).join("")}</ul>` : `<p class="muted">Aucune décision enregistrée.</p>`}`;
+  const btn = $("#decider");
+  if (btn) btn.onclick = async () => {
+    const motif = $("#motif").value.trim();
+    if (motif.length < 10) { $("#err-motif").textContent = "Le motif doit contenir au moins 10 caractères."; $("#motif").focus(); return; }
+    try {
+      await api(`/api/alertes/${a.id}/decisions`, {method:"POST", body: JSON.stringify({action: a.statut, motif})});
+      await tout(); await ouvrir(a.id);
+    } catch (e) { $("#err-motif").textContent = e.message; }
+  };
+}
+async function tout() { await Promise.all([chargerAlertes(), chargerSignalements(), chargerCarte()]); }
+
+$("#formSig").addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = {type: $("#s-type").value, quartier: $("#s-q").value, lieu: $("#s-lieu").value.trim(), description: $("#s-desc").value.trim()};
+  if (body.lieu.length < 3) { $("#err-sig").textContent = "Indiquez le lieu (3 caractères minimum)."; return; }
+  if (body.description.length < 20) { $("#err-sig").textContent = "La description doit contenir au moins 20 caractères."; return; }
+  $("#err-sig").textContent = "";
+  try {
+    const r = await api("/api/signalements", {method:"POST", body: JSON.stringify(body)});
+    $("#confirmSig").innerHTML = `<div class="ok"><strong>Référence : ${esc(r.reference)}</strong><br>${esc(r.message)}</div>`;
+    e.target.reset(); await tout();
+  } catch (err) { $("#err-sig").textContent = err.message; }
+});
+$("#reset").onclick = async () => {
+  if (!confirm("Réinitialiser la démonstration ? Les saisies seront effacées.")) return;
+  try { await api("/api/demo/reinitialiser", {method:"POST"}); } catch (e) { alert(e.message); return; }
+  $("#fiche").innerHTML = "<h2>Fiche</h2><p class='muted'>Sélectionnez une alerte.</p>"; await tout();
+};
+// ----- Suivi d'un signalement -----
+document.getElementById("sf").addEventListener("submit", async e => {
+  e.preventDefault();
+  const ref = document.getElementById("sref").value.trim();
+  const erreur = document.getElementById("serr");
+  const out = document.getElementById("sres");
+  erreur.textContent = ""; out.innerHTML = "";
+  if (!ref) { erreur.textContent = "Saisissez une référence."; return; }
+  const r = await fetch("/api/suivi/" + encodeURIComponent(ref));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { erreur.textContent = d.detail || "Erreur"; return; }
+  out.innerHTML = `
+    <p><strong>${esc(d.reference)}</strong> · ${esc(d.quartier)} · ${esc(d.lieu)}</p>
+    <ol style="list-style:none;padding:0">${d.etapes.map(x => `<li style="padding:.5rem .7rem;border-radius:10px;margin-bottom:.4rem;background:${x.atteinte ? "#E6F0EA" : "#F1F3F1"};color:${x.atteinte ? "#1F4D3A" : "#5F6B66"};font-weight:${x.atteinte ? 600 : 400}">${x.atteinte ? "✓ " : ""}${esc(x.nom)}</li>`).join("")}</ol>
+    <p class="muted">${d.alerte ? `Alerte associée : ${esc(d.alerte)} (${esc(d.alerte_statut)}). La décision finale revient à un acteur habilité.` : "Pas encore d'alerte associée : le signalement doit d'abord être qualifié par un agent."}</p>`;
+});
+
+// ----- Carte des alertes -----
+const carteLeaflet = L.map("carte").setView([35.765, -5.80], 13);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {attribution: "© OpenStreetMap contributors"}).addTo(carteLeaflet);
+const couchesCarte = L.layerGroup().addTo(carteLeaflet);
+async function chargerCarte() {
+  const points = await fetch("/api/carte").then(r => r.json()).catch(() => []);
+  couchesCarte.clearLayers();
+  const limites = [];
+  points.forEach(p => {
+    if (p.lat === null || p.lon === null) return;
+    const couleur = p.priorite === "Haute" ? "#9B2C2C" : "#B7791F";
+    L.circleMarker([p.lat, p.lon], {radius: 11, color: "#fff", weight: 2, fillColor: couleur, fillOpacity: .95})
+      .bindPopup(`<b>${esc(p.titre)}</b><br>${esc(p.reference)} · ${esc(p.statut)}<br>Priorité ${esc(p.priorite)}`)
+      .addTo(couchesCarte);
+    limites.push([p.lat, p.lon]);
+  });
+  if (limites.length) carteLeaflet.fitBounds(limites, {padding: [40, 40]});
+}
+
+// ----- Connexion -----
+function majConnexion() {
+  const zone = document.getElementById("connexion-etat");
+  const formulaire = document.getElementById("form-connexion");
+  if (session) {
+    zone.innerHTML = `Connecté : <strong>${esc(session.nom)}</strong> <button class="sec" id="deco" style="margin-left:.5rem">Se déconnecter</button>`;
+    formulaire.style.display = "none";
+    document.getElementById("deco").onclick = () => {
+      session = null; sessionStorage.removeItem("ecosense-session");
+      $("#fiche").innerHTML = "<h2>Fiche</h2><p class='muted'>Sélectionnez une alerte.</p>";
+      majConnexion(); tout();
+    };
+  } else {
+    zone.textContent = "Non connecté : vous pouvez signaler, suivre et consulter la carte.";
+    formulaire.style.display = "";
+  }
+}
+document.getElementById("form-connexion").addEventListener("submit", async e => {
+  e.preventDefault();
+  const r = await fetch("/api/connexion", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({compte: $("#compte").value, mot_de_passe: $("#mdp").value})});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { $("#err-conn").textContent = d.detail || "Connexion refusée"; return; }
+  session = {jeton: d.jeton, role: d.role, nom: d.nom};
+  sessionStorage.setItem("ecosense-session", JSON.stringify(session));
+  $("#err-conn").textContent = ""; $("#mdp").value = "";
+  majConnexion(); tout();
+});
+
+majConnexion();
+tout();
+</script>
+</body>
+</html>

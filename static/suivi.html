@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EcoSense – suivi d'un signalement</title>
+<style>
+:root{--vert:#1F4D3A;--vert-clair:#E6F0EA;--ivoire:#F7F5EE;--texte:#1B2622;--gris:#5F6B66;--bord:#DCE3DE}
+body{font-family:"Segoe UI",system-ui,sans-serif;margin:0;background:var(--ivoire);color:var(--texte)}
+header{background:var(--vert);color:#fff;padding:1rem 1.5rem}
+header h1{font-family:Georgia,serif;font-size:1.4rem;margin:0}
+main{max-width:620px;margin:2rem auto;padding:0 1rem}
+section{background:#fff;border:1px solid var(--bord);border-radius:16px;padding:1.4rem}
+h2{font-family:Georgia,serif;color:var(--vert);margin:0 0 .8rem;font-size:1.2rem}
+input{width:100%;padding:.6rem .8rem;border:1px solid var(--bord);border-radius:10px;font:inherit;text-transform:uppercase}
+button{margin-top:.6rem;border:0;background:var(--vert);color:#fff;border-radius:999px;padding:.55rem 1.2rem;font:inherit;font-weight:600;cursor:pointer}
+.err{color:#9B2C2C;min-height:1.2em;margin-top:.4rem}
+ol{list-style:none;padding:0;margin:1rem 0 0}
+li{padding:.6rem .8rem;border-radius:10px;margin-bottom:.4rem;background:#F1F3F1;color:var(--gris)}
+li.ok{background:var(--vert-clair);color:var(--vert);font-weight:600}
+.muted{color:var(--gris);font-size:.92rem}
+a{color:var(--vert)}
+</style>
+</head>
+<body>
+<header><h1>EcoSense · suivi d'un signalement</h1></header>
+<main>
+  <section>
+    <h2>Où en est mon signalement ?</h2>
+    <p class="muted">Saisissez la référence reçue après votre envoi (format SIG-2026-0000).</p>
+    <form id="f">
+      <input id="ref" placeholder="SIG-2026-0041" maxlength="20" aria-label="Référence du signalement">
+      <button type="submit">Consulter</button>
+      <div class="err" id="err"></div>
+    </form>
+    <div id="resultat"></div>
+    <p class="muted"><a href="/">Retour à la plateforme</a> · <a href="/carte">Voir la carte des alertes</a></p>
+  </section>
+</main>
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+document.getElementById("f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const ref = document.getElementById("ref").value.trim();
+  const err = document.getElementById("err");
+  const out = document.getElementById("resultat");
+  err.textContent = ""; out.innerHTML = "";
+  if (!ref) { err.textContent = "Saisissez une référence."; return; }
+  const r = await fetch("/api/suivi/" + encodeURIComponent(ref));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) { err.textContent = d.detail || "Erreur"; return; }
+  out.innerHTML = `
+    <p><strong>${esc(d.reference)}</strong> · ${esc(d.quartier)} · ${esc(d.lieu)}</p>
+    <ol>${d.etapes.map(x => `<li class="${x.atteinte ? "ok" : ""}">${x.atteinte ? "✓ " : ""}${esc(x.nom)}</li>`).join("")}</ol>
+    <p class="muted">${d.alerte ? `Alerte associée : ${esc(d.alerte)} (${esc(d.alerte_statut)}). La décision finale revient à un acteur habilité.` : "Pas encore d'alerte associée : le signalement doit d'abord être qualifié par un agent."}</p>`;
+});
+</script>
+</body>
+</html>
